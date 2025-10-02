@@ -1,43 +1,64 @@
-void AC_WorldPlayerController::ChatButtonPressed(const FInputActionValue& Value)
+bool UWC_ItemSlot::DropSlot(UWC_ItemSlot* OtherSlot)
 {
-	AC_WorldHUD* WorldHUD = CastWHUD(GetMyHUD());
+	if (!OtherSlot || !OtherSlot->SlotData.ItemData) return false;
+	if (!InventoryComponent || !EquipmentComponent) return false;
 
-	if (WorldHUD)
+	// 슬롯 타입이 호환되지 않는 경우
+	if (!IsItemCompatibleWithSlot(SlotType, OtherSlot->SlotData.ItemData->ItemType, OtherSlot->SlotData.ItemData->ItemSubType))
+		return false;
+
+	// 같은 소비 아이템이면 합치기
+	if (SlotData.ItemData &&
+		SlotData.ItemData->ItemType == EItemType::CONSUMABLE &&
+		OtherSlot->SlotData.ItemData == SlotData.ItemData)
 	{
-		WorldHUD->SetChatWidgetVisible(true);
-		WorldHUD->ActivateChat();  // 입력 가능 상태로 전환
+		if (MergeSlot(OtherSlot)) MoveData(OtherSlot);
 	}
+	else
+	{
+		MoveData(OtherSlot);
+	}
+
+	RefreshSlot();
+	OtherSlot->RefreshSlot();
+	return true;
 }
 
-void AC_WorldPlayerController::ServerSendChat_Implementation(const FString& Message)
+bool UC_InventoryComponent::AddItem(UDA_ItemData* NewItem, int32 Count)
 {
-	AC_WorldGameMode* WorldGM = CastWGM(GetMyGM());
+	if (!NewItem || Count <= 0) return false;
 
-	if (WorldGM)
+	if (NewItem->ItemType == EItemType::CONSUMABLE)
 	{
-		WorldGM->SendChatMessage(Message);  // 모든 클라이언트에게 브로드캐스트
-	}
-}
-
-void AC_WorldPlayerController::ClientSendChat_Implementation(const FString& Message)
-{
-	AC_WorldHUD* WorldHUD = CastWHUD(GetMyHUD());
-
-	if (WorldHUD)
-	{
-		WorldHUD->AddChatMessage(Message);  // UI에 메시지 출력
-	}
-}
-
-void AC_WorldGameMode::SendChatMessage(const FString& Message)
-{
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-	{
-		AC_WorldPlayerController* WorldPC = Cast<AC_WorldPlayerController>(*It);
-
-		if (WorldPC)
+		// 기존 슬롯에서 추가 가능한지 확인
+		for (auto& Slot : InventorySlots)
 		{
-			WorldPC->ClientSendChat(Message);
+			if (Slot.ItemData == NewItem && Slot.ItemQuantity < MaxItemQuantity)
+			{
+				int32 Addable = FMath::Min(Count, MaxItemQuantity - Slot.ItemQuantity);
+				Slot.ItemQuantity += Addable;
+				Count -= Addable;
+
+				ServerUpdateInventorySlot(SlotIndex, Slot);
+				if (Count <= 0) break;
+			}
 		}
 	}
+
+	// 남은 수량 새 슬롯에 배치
+	for (auto& Slot : InventorySlots)
+	{
+		if (Slot.IsEmpty())
+		{
+			Slot.ItemData = NewItem;
+			Slot.ItemQuantity = FMath::Min(Count, MaxItemQuantity);
+			Count -= Slot.ItemQuantity;
+
+			ServerUpdateInventorySlot(SlotIndex, Slot);
+			if (Count <= 0) break;
+		}
+	}
+
+	OnInventoryUpdate.Broadcast();
+	return (Count <= 0);
 }
