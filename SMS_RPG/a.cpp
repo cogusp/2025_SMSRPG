@@ -1,26 +1,43 @@
-void UWC_ChatWidget::OnTextCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+void AC_WorldPlayerController::ChatButtonPressed(const FInputActionValue& Value)
 {
-    // 메시지 공백을 없애고, "닉네임: 채팅" 형태로 가공
-	if (CommitMethod == ETextCommit::OnEnter && ChatText)
+	AC_WorldHUD* WorldHUD = CastWHUD(GetMyHUD());
+
+	if (WorldHUD)
 	{
-		FString TrimmedText = ChatText->GetText().ToString().TrimStartAndEnd();
+		WorldHUD->SetChatWidgetVisible(true);
+		WorldHUD->ActivateChat();  // 입력 가능 상태로 전환
+	}
+}
 
-		if (!TrimmedText.IsEmpty())
+void AC_WorldPlayerController::ServerSendChat_Implementation(const FString& Message)
+{
+	AC_WorldGameMode* WorldGM = CastWGM(GetMyGM());
+
+	if (WorldGM)
+	{
+		WorldGM->SendChatMessage(Message);  // 모든 클라이언트에게 브로드캐스트
+	}
+}
+
+void AC_WorldPlayerController::ClientSendChat_Implementation(const FString& Message)
+{
+	AC_WorldHUD* WorldHUD = CastWHUD(GetMyHUD());
+
+	if (WorldHUD)
+	{
+		WorldHUD->AddChatMessage(Message);  // UI에 메시지 출력
+	}
+}
+
+void AC_WorldGameMode::SendChatMessage(const FString& Message)
+{
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		AC_WorldPlayerController* WorldPC = Cast<AC_WorldPlayerController>(*It);
+
+		if (WorldPC)
 		{
-			AC_WorldPlayerController* WorldPC = CastWPC(GetMyPC());
-			APlayerController* PC = GetOwningPlayer();
-			AC_PlayerCharacter* Player = CastWCharacter(PC->GetPawn());
-
-			if (Player && WorldPC)
-			{
-				FString Message = FString::Printf(TEXT("%s: %s"), *Player->CharacterInfo.CharacterName, *TrimmedText);
-				WorldPC->ServerSendChat(Message);  // 서버에 메시지 전달
-			}
+			WorldPC->ClientSendChat(Message);
 		}
-
-		// UI 상태 초기화
-		ChatText->SetText(FText::GetEmpty());
-		ChatText->SetIsEnabled(false);
-		SetChatWidgetVisibility(false);
 	}
 }
