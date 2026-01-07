@@ -8,7 +8,7 @@
   <!-- Introduce -->
   <h4> 👾 파티 플레이 기반 던전 공략 ARPG </h4>
   <h4> 🛠️ 4인 개발</h4>
-  <h4> 📆 2025.05~2025.06 (2개월)</h4>
+  <h4> 📆 2025.04~2025.06 (3개월)</h4>
   
   <!-- Link -->
   <h4> 🔗 https://drive.google.com/file/d/1GfKsiClOWlOWB6IazmZ1QDfkwGHzZ-c1/view?usp=drive_link </h4>
