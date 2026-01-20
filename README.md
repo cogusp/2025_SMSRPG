@@ -33,6 +33,13 @@
   
   <br><br>
 
+  <h2> Flow </h2>
+  <div>
+      <h4> 채팅 시스템 </h4>
+      <img width="497" height="746" alt="image" src="https://github.com/user-attachments/assets/c6a2545f-cdc0-41a8-adb9-ac4f602a26df" />
+  </div>
+
+
   <!-- Result Presentation -->
   <h2> Result </h2>
   <br>
